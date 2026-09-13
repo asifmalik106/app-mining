@@ -1,0 +1,6 @@
+{
+  "primary": { "provider": "ollama", "model": "qwen3.5:4b", "baseUrl": "http://127.0.0.1:11434" },
+  "verifier": { "provider": "ollama", "model": "gemma3:4b", "baseUrl": "http://127.0.0.1:11434" },
+  "adjudicator": { "provider": "ollama", "model": "qwen3.5:9b", "baseUrl": "http://127.0.0.1:11434" }
+  ,"embedding": { "provider": "ollama", "model": "nomic-embed-text", "baseUrl": "http://127.0.0.1:11434" }
+}

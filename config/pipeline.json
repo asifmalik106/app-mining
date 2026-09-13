@@ -1,0 +1,18 @@
+{
+  "analysisVersion": "2026-09-12.2",
+  "schemaVersion": "1.0",
+  "timeoutMs": 180000,
+  "maxRetries": 1,
+  "numCtx": 8192,
+  "numPredict": 1400,
+  "keepAlive": "0",
+  "verificationConfidenceThreshold": 0.75,
+  "adjudicationConfidenceThreshold": 0.55
+  ,"phase3": {
+    "embeddingBatchSize": 64,
+    "similarityThreshold": 0.72
+  },
+  "phase4": {
+    "weights": { "frequency": 0.30, "appBreadth": 0.20, "severity": 0.20, "businessImpact": 0.15, "demand": 0.15 }
+  }
+}

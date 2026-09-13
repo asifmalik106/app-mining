@@ -8,3 +8,10 @@ __pycache__/
 data/downloads/
 data/recovery/
 exports/*.csv
+data/phase1/*.jsonl
+data/phase2/
+data/runs/
+data/*.sqlite
+state/project-state.json
+state/locks/
+logs/*.log
