@@ -7,7 +7,6 @@ __pycache__/
 *.sqlite3-wal
 data/downloads/
 data/recovery/
-data/phase1/*.jsonl
 data/phase2/
 data/runs/
 data/*.sqlite
