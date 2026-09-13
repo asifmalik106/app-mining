@@ -13,3 +13,5 @@ data/*.sqlite
 state/project-state.json
 state/locks/
 logs/*.log
+
+node_modules/

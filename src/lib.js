@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import readline from 'node:readline';
 import { spawnSync } from 'node:child_process';
 
 export const root = process.cwd();
@@ -16,8 +15,37 @@ export async function readJson(file, fallback) { try { return JSON.parse(await f
 export async function writeJson(file, value) { await ensureDirs(); const tmp=p(`${file}.tmp`); await fsp.mkdir(path.dirname(tmp),{recursive:true}); await fsp.writeFile(tmp, JSON.stringify(value,null,2)+'\n'); await fsp.rename(tmp,p(file)); }
 export async function appendJsonl(file, value) { await ensureDirs(); await fsp.mkdir(path.dirname(p(file)),{recursive:true}); await fsp.appendFile(p(file), JSON.stringify(value)+'\n'); }
 export async function writeJsonl(file, values) { await ensureDirs(); const target=p(file),tmp=`${target}.tmp`; await fsp.mkdir(path.dirname(target),{recursive:true}); await fsp.writeFile(tmp,values.map(x=>JSON.stringify(x)).join('\n')+(values.length?'\n':'')); await fsp.rename(tmp,target); }
-export async function jsonl(file) { const out=[]; if (!exists(file)) return out; const rl=readline.createInterface({input:fs.createReadStream(p(file)),crlfDelay:Infinity}); for await(const line of rl) { if (!line.trim()) continue; try {out.push(JSON.parse(line));} catch { throw new Error(`Invalid JSONL: ${file}`); } } return out; }
-export async function countJsonl(file) { if (!exists(file)) return 0; let n=0; const rl=readline.createInterface({input:fs.createReadStream(p(file)),crlfDelay:Infinity}); for await(const l of rl) if(l.trim()) n++; return n; }
+// JSONL records are separated by LF, not Unicode separators inside JSON strings.
+async function* jsonlLines(file) {
+  if (!exists(file)) return;
+  let pending='';
+  for await (const chunk of fs.createReadStream(p(file), {encoding:'utf8'})) {
+    pending+=chunk;
+    let start=0, end;
+    while ((end=pending.indexOf('\n',start))!==-1) {
+      yield pending.slice(start,end);
+      start=end+1;
+    }
+    pending=pending.slice(start);
+  }
+  if (pending) yield pending;
+}
+export async function jsonl(file) {
+  const out=[];
+  let lineNumber=0;
+  for await (const line of jsonlLines(file)) {
+    lineNumber++;
+    if (!line.trim()) continue;
+    try { out.push(JSON.parse(line)); }
+    catch { throw new Error(`Invalid JSONL: ${file} at line ${lineNumber}`); }
+  }
+  return out;
+}
+export async function countJsonl(file) {
+  let n=0;
+  for await (const line of jsonlLines(file)) if (line.trim()) n++;
+  return n;
+}
 export function loadEnv() { if (!exists('.env')) return; for (const line of fs.readFileSync(p('.env'),'utf8').split(/\r?\n/)) { const m=line.match(/^\s*([A-Z0-9_]+)=(.*)$/); if(m && !process.env[m[1]]) process.env[m[1]]=m[2].replace(/^['"]|['"]$/g,''); } }
 export async function config() { loadEnv(); const models=await readJson('config/models.json',{}), pipe=await readJson('config/pipeline.json',{}); for(const [k,key] of [['primary','PRIMARY'],['verifier','VERIFIER'],['adjudicator','ADJUDICATOR'],['embedding','EMBEDDING']]) { models[k]={...models[k]}; for(const [field,suffix] of [['provider','PROVIDER'],['model','MODEL'],['baseUrl','BASE_URL']]) if(process.env[`${key}_${suffix}`]) models[k][field]=process.env[`${key}_${suffix}`]; } return {models, pipe:{...pipe,timeoutMs:Number(process.env.AI_TIMEOUT_SECONDS||pipe.timeoutMs/1000)*1000}}; }
 export function args(argv=process.argv.slice(2)) { const out={_:[]}; for(let i=0;i<argv.length;i++) { let x=argv[i]; if(!x.startsWith('--')) out._.push(x); else { const [k,v]=x.slice(2).split('='); const next=argv[i+1]; out[k]=v??(next!==undefined&&!next.startsWith('--')?argv[++i]:true); } } return out; }

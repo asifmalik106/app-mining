@@ -9,6 +9,7 @@
     "doctor": "node src/cli.js doctor",
     "wizard": "node src/cli.js wizard",
     "bootstrap": "node src/cli.js bootstrap",
+    "models:serve": "node src/models-serve.js",
     "models:status": "node src/cli.js models status",
     "models:install": "node src/cli.js models install",
     "import:phase1": "node src/cli.js import phase1",
@@ -30,5 +31,11 @@
     "db:status": "node src/cli.js db status",
     "test": "node --test"
   },
-  "engines": { "node": ">=22.5" }
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "fzstd": "^0.1.1",
+    "tar": "^7.5.22"
+  }
 }

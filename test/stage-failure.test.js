@@ -1,0 +1,23 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import {spawnSync} from 'node:child_process';
+const cli=path.resolve('src/cli.js');
+for(const outage of [true,false])test(`Phase 2 stops on ${outage?'server outage':'three repeated model failures'}`,async t=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'miner-failure-'));
+ t.after(()=>fs.rm(dir,{recursive:true,force:true}));
+ for(const folder of ['state','config','data/phase1'])await fs.mkdir(path.join(dir,folder),{recursive:true});
+ await fs.writeFile(path.join(dir,'state/project-state.json'),JSON.stringify({phases:{phase1:{status:'complete'}}}));
+ await fs.copyFile('config/models.json',path.join(dir,'config/models.json'));
+ await fs.copyFile('config/pipeline.json',path.join(dir,'config/pipeline.json'));
+ await fs.writeFile(path.join(dir,'data/phase1/reviews.jsonl'),Array.from({length:10},(_,id)=>JSON.stringify({id,content:'Example'})).join('\n'));
+ await fs.writeFile(path.join(dir,'mock.mjs'),`let failed=false;globalThis.fetch=async(url)=>{if(url.endsWith('/api/tags')){if(failed&&${outage})throw new Error('server offline');return Response.json({models:['qwen3.5:4b','gemma3:4b','qwen3.5:9b','nomic-embed-text'].map(name=>({name}))});}failed=true;return new Response('model failed',{status:500});};`);
+ const result=spawnSync(process.execPath,['--import',path.join(dir,'mock.mjs'),cli,'phase2','--confirm-full'],{cwd:dir,encoding:'utf8',timeout:20000});
+ assert.equal(result.status,1,result.stderr);
+ assert.match(result.stderr+result.stdout,/Stopped primary/);
+ const records=(await fs.readFile(path.join(dir,'data/phase2/primary.jsonl'),'utf8')).trim().split('\n');
+ assert.equal(records.length,outage?1:3);
+ await assert.rejects(fs.access(path.join(dir,'state/locks/production.lock')));
+});

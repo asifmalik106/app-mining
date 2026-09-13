@@ -4,18 +4,18 @@ export async function checkProvider(settings) {
   try {
     const base=settings.baseUrl?.replace(/\/$/,'');
     if(settings.provider==='ollama') {
-      const r=await fetch(`${base}/api/tags`);
+      const r=await fetch(`${base}/api/tags`,{signal:AbortSignal.timeout(10000)});
       if(!r.ok) return {ok:false,reason:`Ollama HTTP ${r.status}`};
       const data=await r.json();
       const found=data.models?.some(x=>x.name===settings.model||x.name.startsWith(`${settings.model}:`));
-      return found?{ok:true}:{ok:false,reason:`model ${settings.model} is not installed`};
+      return found?{ok:true}:{ok:false,code:'MODEL_MISSING',reason:`model ${settings.model} is not installed`};
     }
     if(settings.provider==='llamacpp') {
-      const r=await fetch(`${base}/health`);
+      const r=await fetch(`${base}/health`,{signal:AbortSignal.timeout(10000)});
       return r.ok?{ok:true}:{ok:false,reason:`llama.cpp health HTTP ${r.status}`};
     }
     return {ok:false,reason:`unsupported provider ${settings.provider}`};
-  } catch(e) { return {ok:false,reason:e.message}; }
+  } catch(e) { return {ok:false,code:e.cause?.code,reason:`${e.message}${e.cause?.code?`: ${e.cause.code}`:''}`}; }
 }
 
 export function parseModelJson(raw) {
